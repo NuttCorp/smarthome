@@ -1,0 +1,69 @@
+version: '2'
+
+services:
+  influxdb:
+    image: 'influxdb:latest'
+    volumes:
+      - 'influxdb_config:/etc/influxdb:rw'
+      - 'influxdb_data:/var/lib/influxdb:rw'
+  mosquitto:
+    image: 'eclipse-mosquitto:latest'
+    volumes:
+      - 'mosquitto_config:/mosquitto/config:rw'
+      - 'mosquitto_log:/mosquitto/log:rw'
+      - 'mosquitto_data:/mosquitto/data:rw'
+    ports:
+      - '1883:1883'
+      - '8883:8883'
+  nodered:
+    image: 'nodered/node-red:latest'
+    depends_on:
+      - mosquitto
+    volumes:
+      - 'nodered_data:/data:rw'
+    ports:
+      - '1880:1880'
+  grafana-renderer:
+    image: 'grafana/grafana-image-renderer:latest'
+  grafana:
+    image: 'grafana/grafana:latest'
+    depends_on:
+      - influxdb
+      - grafana-renderer
+    volumes:
+      - 'grafana_config:/etc/grafana:rw'
+      - 'grafana_data:/var/lib/grafana:rw'
+    environment:
+      - GF_RENDERING_CALLBACK_URL=http://grafana:3000/
+      - GF_RENDERING_SERVER_URL=http://grafana-renderer:8081/render
+    ports:
+      - '3000:3000'
+  apache:
+    image: 'httpd:latest'
+    depends_on:
+      - nodered
+      - grafana
+    volumes:
+      - 'apache_data:/usr/local/apache2:rw'
+    ports:
+      - '80:80'
+      - '443:443'
+volumes:
+  mosquitto_config:
+    driver: local
+  mosquitto_log:
+    driver: local
+  mosquitto_data:
+    driver: local
+  influxdb_data:
+    driver: local
+  influxdb_config:
+    driver: local
+  nodered_data:
+    driver: local
+  apache_data:
+    driver: local
+  grafana_data:
+    driver: local
+  grafana_config:
+    driver: local
